@@ -1,48 +1,46 @@
-const http = require('http')
 const express = require('express')
-const getUsers = require('./users')
 const app = express()
 const morgan = require('morgan')
+const path = require('path')    
+const multer = require('multer')
+const fs = require('fs')
+const upload = multer({ dest: 'public/'})
+const cors = require('cors')
+
 const hostname = '127.0.0.1'
 const port = 3000
 
 app.use(morgan('combined'))
 
+app.use(express.urlencoded({ extended: true }))
+app.use(express.json())
+
+app.use(express.static(path.join(__dirname, "public")))
+
+//static file
 app.get('/', (req, res) => {
-    res.send("This is the home page")
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 })
 
-app.get('/users', (req, res) => {
-    res.json(getUsers)
+//body parser
+app.post('/login', (req, res) => {
+    const {username, password} = req.body
+    res.send(`Anda login dengan username ${username} dan password ${password}`)
 })
 
-app.get('/users/:name', (req, res) => {
-    const user = getUsers.find(user => user.name === req.params.name)
-    if (user) {
-        res.json(user)
-    } else {
-        res.status(404).json({
-            message: "Data user tidak ditemukan"
-        })
+//upload file
+app.post('/upload', upload.single('file'), (req, res) => {
+    const file = req.file
+    if(file){
+        const target = path.join(__dirname, 'public', file.originalname)
+        fs.renameSync(file.path, target)
+        res.send("file berhasil diupload")
+    }else{
+        res.send("file gagal diupload")
     }
 })
 
-app.use((req, res, next) => {
-    res.status(404).json({
-        status: "Error",
-        message: "Resource tidak ditemukan",
-    })
-    next()
-})
-
-const errorHandling = (err, req, res, next) => {
-    res.status(500).json({
-        status: "Error",
-        message: "terjadi kesalahan pada server",
-    })
-}
-
-app.use(errorHandling)
+app.use(cors())
 
 app.listen(port, hostname, () => {
     console.log(`Server running at http://${hostname}:${port}/`)
